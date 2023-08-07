@@ -22,7 +22,7 @@ param(
 # Define URL for PS script to be uploaded to runbook
 $scriptContent = 'https://cdn.jsdelivr.net/gh/BITNewcastle/Monitor-AppleMDMPushCertificate/Monitor-AppleMDMPushCertificate.ps1'
 # Connect to Azure AD with user-assigned managed identity
-Connect-AzureAD -Identity
+#Connect-AzureAD -Identity
 # Define variables for MS Graph API permissions #
 $resourceAppId = '00000003-0000-0000-c000-000000000000' # MS Graph application
 $permissionList = 'DeviceManagementServiceConfig.Read.All', 'Mail.Send' # Read MS Intune service properties, and send mail as user

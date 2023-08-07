@@ -43,15 +43,15 @@ Invoke-AzRestMethod -Method "PUT" -ResourceGroupName $resourceGroupName -Resourc
 Publish-AzAutomationRunbook -Name $runbookName -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName
 
 ## Set required MS Graph API permissions for the automation account ##
-$MSI = (Get-AzureADServicePrincipal -Filter "displayName eq '$automationAccountName'")
-if (!$MSI) { throw "Automation account '$automationAccountName' doesn't exist" }
-$resourceSP = Get-AzureADServicePrincipal -Filter "appId eq '$resourceAppId'"
-if (!$resourceSP) { throw "Resource '$resourceAppId' doesn't exist" }
-foreach ($permission in $permissionList) {
-    $appRole = $resourceSP.AppRoles | Where-Object { $_.Value -eq $permission -and $_.AllowedMemberTypes -contains "Application" }
-    if (!$appRole) {
-        Write-Warning "Application permission '$permission' wasn't found in '$resourceAppId' application. Therefore it cannot be added."
-        continue
-    }
-    New-AzureADServiceAppRoleAssignment -ObjectId $MSI.ObjectId -PrincipalId $MSI.ObjectId -ResourceId $resourceSP.ObjectId -Id $appRole.Id
-}
+#$MSI = (Get-AzureADServicePrincipal -Filter "displayName eq '$automationAccountName'")
+#if (!$MSI) { throw "Automation account '$automationAccountName' doesn't exist" }
+#$resourceSP = Get-AzureADServicePrincipal -Filter "appId eq '$resourceAppId'"
+#if (!$resourceSP) { throw "Resource '$resourceAppId' doesn't exist" }
+#foreach ($permission in $permissionList) {
+#    $appRole = $resourceSP.AppRoles | Where-Object { $_.Value -eq $permission -and $_.AllowedMemberTypes -contains "Application" }
+#    if (!$appRole) {
+#        Write-Warning "Application permission '$permission' wasn't found in '$resourceAppId' application. Therefore it cannot be added."
+#        continue
+#    }
+#    New-AzureADServiceAppRoleAssignment -ObjectId $MSI.ObjectId -PrincipalId $MSI.ObjectId -ResourceId $resourceSP.ObjectId -Id $appRole.Id
+#}

@@ -18,11 +18,11 @@ param(
   [string]$automationAccountName,
   [string]$runbookName,
   [string]$location,
-  [string]$scriptURI
+  [string]$runbookScriptUri
 )
 
 # Get content of PS script
-$scriptContent = Invoke-RestMethod $scriptURI
+$scriptContent = Invoke-RestMethod $runbookScriptUri
 
 
 ####----------------[SCRIPT]----------------####

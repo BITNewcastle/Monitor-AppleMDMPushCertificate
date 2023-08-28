@@ -22,8 +22,7 @@ param(
   [string]$automationAccountName,
   [string]$runbookName,
   [string]$location,
-  [string]$runbookScriptUri,
-  [string]$managedIdentityUserAssignedName
+  [string]$runbookScriptUri
 )
 
 # Get content of PS script

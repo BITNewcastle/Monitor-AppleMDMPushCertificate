@@ -22,7 +22,8 @@ param(
   [string]$automationAccountName,
   [string]$runbookName,
   [string]$location,
-  [string]$runbookScriptUri
+  [string]$runbookScriptUri,
+  [string]$managedIdentityUserAssignedName
 )
 
 # Get content of PS script
@@ -48,7 +49,6 @@ $DeploymentScriptOutputs = @{}
 $DeploymentScriptOutputs['runbookName'] = $runbookName
 
 # Deletes the user-assigned managed identity associated with this deployment script - cleans up
-$managedUserIDPrincipalId = (Get-AzContext).Account.ExtendedProperties.HomeAccountId.Split('.')[0]
-$managedUserIDName = (Get-AzRoleAssignment -ObjectId $managedUserIDPrincipalId).DisplayName
-Get-AzRoleAssignment -ObjectId $managedUserIDPrincipalId | Remove-AzRoleAssignment
-Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedUserIDName
+$managedIdentityUserAssignedPrincipalId = (Get-AzADServicePrincipal -DisplayName $managedIdentityUserAssignedName).Id
+Get-AzRoleAssignment -ObjectId $managedIdentityUserAssignedPrincipalId | Remove-AzRoleAssignment
+Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedIdentityUserAssignedName

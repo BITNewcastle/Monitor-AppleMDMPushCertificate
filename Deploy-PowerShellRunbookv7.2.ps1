@@ -38,3 +38,6 @@ Invoke-AzRestMethod -Method "PUT" -ResourceGroupName $resourceGroupName -Resourc
         -Payload "$scriptContent"
 # Publish runbook
 Publish-AzAutomationRunbook -Name $runbookName -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName
+
+$DeploymentScriptOutputs = @{}
+$DeploymentScriptOutputs['runbookName'] = $runbookName

@@ -49,4 +49,7 @@ $DeploymentScriptOutputs = @{}
 $DeploymentScriptOutputs['runbookName'] = $runbookName
 
 # Deletes the user-assigned managed identity associated with this deployment script - cleans up
-Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedIdentityUserAssignedName
+$managedUserIDPrincipalId = (Get-AzContext).Account.ExtendedProperties.HomeAccountId.Split('.')[0]
+$managedUserIDName = (Get-AzRoleAssignment -ObjectId $managedUserIDPrincipalId).DisplayName
+Get-AzRoleAssignment -ObjectId $managedUserIDPrincipalId | Remove-AzRoleAssignment
+Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedUserIDName

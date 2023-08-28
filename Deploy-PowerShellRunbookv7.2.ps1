@@ -22,11 +22,9 @@ param(
   [string]$automationAccountName,
   [string]$runbookName,
   [string]$location,
-  [string]$runbookScriptUri
+  [string]$runbookScriptUri,
+  [string]$managedIdentityUserAssignedName
 )
-
-# Gets context - for final cleanup
-$context = Get-AzContext
 
 # Get content of PS script
 $scriptContent = Invoke-RestMethod $runbookScriptUri
@@ -51,4 +49,4 @@ $DeploymentScriptOutputs = @{}
 $DeploymentScriptOutputs['runbookName'] = $runbookName
 
 # Deletes the user-assigned managed identity associated with this deployment script - cleans up
-Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $context.Account.Id
+Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedIdentityUserAssignedName

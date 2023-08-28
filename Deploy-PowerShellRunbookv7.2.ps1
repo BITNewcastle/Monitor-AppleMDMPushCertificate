@@ -1,9 +1,13 @@
 <#
     .SYNOPSIS
-        Deploys Azure PowerShell 7.2 Runbook under an existing Automation Account.
+        Deploys PowerShell 7.2 Runbook under an existing Automation Account.
 
     .DESCRIPTION
-        
+        Gets the content of the PS script to be deployed to runbook
+        Creates draft PS 7.2 runbook
+        Uploads PS script content to runbook
+        Publishes runbook
+        Deletes the user-assigned managed identity associated with this deployment script - cleans up
 
     .NOTES
         AUTHOR: Christopher Cooper
@@ -20,6 +24,9 @@ param(
   [string]$location,
   [string]$runbookScriptUri
 )
+
+# Gets context - for final cleanup
+$context = Get-AzContext
 
 # Get content of PS script
 $scriptContent = Invoke-RestMethod $runbookScriptUri
@@ -39,5 +46,9 @@ Invoke-AzRestMethod -Method "PUT" -ResourceGroupName $resourceGroupName -Resourc
 # Publish runbook
 Publish-AzAutomationRunbook -Name $runbookName -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName
 
+# Outputs to allow for nested template
 $DeploymentScriptOutputs = @{}
 $DeploymentScriptOutputs['runbookName'] = $runbookName
+
+# Deletes the user-assigned managed identity associated with this deployment script - cleans up
+Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $context.Account.Id

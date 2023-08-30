@@ -1,13 +1,15 @@
 <#
     .SYNOPSIS
-        Deploys PowerShell 7 Runbook under an existing Automation Account.
+        Deploys PowerShell 7.1 Runbook under an existing Automation Account.
 
     .DESCRIPTION
-        Gets the content of the PS script to be deployed to runbook
-        Creates draft PowerShell 7 runbook
-        Uploads PS script content to runbook
-        Publishes runbook
-        Deletes the user-assigned managed identity associated with this deployment script - cleans up
+        This script is deployed in the form of a deployment script, as part of a Bicep deployment.
+        Import PowerShell module dependency to existing automation account first, before proceeding with rest of script.
+        Imports remaining PowerShell module to existing automation account.
+        Creates draft PowerShell 7.1 runbook.
+        Uploads specified PS script content to runbook.
+        Publishes runbook.yb
+        Deletes the user-assigned managed identity and role assigment associated with this deployment script - cleans up.
 
     .NOTES
         AUTHOR: Christopher Cooper
@@ -16,64 +18,112 @@
 
 #-------------------[INITIALISATIONS]-------------------#
 
-# Define input parameters
-param(
-  [string]$resourceGroupName, 
-  [string]$automationAccountName,
-  [string]$runbookName,
-  [string]$location,
-  [string]$runbookScriptUri,
-  [string]$managedIdentityUserAssignedName
+# Input parameters to be passed from Bicep deployment
+param (
+    [string]$resourceGroupName, 
+    [string]$automationAccountName,
+    [string]$runbookName,
+    [string]$location,
+    [string]$runbookScriptUri,
+    [string]$managedIdentityUserAssignedName
 )
-
-# Get content of PS script
-$scriptContent = Invoke-RestMethod $runbookScriptUri
-
-
-####----------------[SCRIPT]----------------####
-
-## Import required PowerShell modules to existing automation account
-$moduleVersion = '1.28.0'
-$Modules = @()
-$Modules += "Microsoft.Graph.Authentication"
-$Modules += "Microsoft.Graph.Users.Actions"
-
-Foreach ($ModuleName in $Modules)
-{
-$Payload = @"
-    {"properties":
-        {"contentLink":
-            {"uri":"https://www.powershellgallery.com/api/v2/package/$ModuleName/$moduleVersion"}
-        }
-    }
-"@
-
-Invoke-AzRestMethod `
-    -Method PUT `
-    -ResourceGroupName $resourceGroupName -ResourceProviderName "Microsoft.Automation" `
-    -ResourceType "automationAccounts" -Name $automationAccountName/powershell7Modules/$ModuleName -ApiVersion 2022-08-08 `
-    -Payload $Payload
-}
-
-
-## Create PowerShell 7 runbook, upload script content and publish runbook ##
-# Create PowerShell 7 runbook 
-Invoke-AzRestMethod -Method "PUT" -ResourceGroupName $resourceGroupName -ResourceProviderName "Microsoft.Automation" `
-        -ResourceType "automationAccounts" -Name "${automationAccountName}/runbooks/${runbookName}" -ApiVersion  2022-06-30-preview `
-        -Payload "{`"properties`":{`"runbookType`":`"PowerShell`", `"runtime`":`"PowerShell-7`", `"logProgress`":false, `"logVerbose`":false, `"draft`":{}}, `"location`":`"$($location)`"}"
-# Upload PS script to runbook
-Invoke-AzRestMethod -Method "PUT" -ResourceGroupName $resourceGroupName -ResourceProviderName "Microsoft.Automation" `
-        -ResourceType "automationAccounts" -Name "${automationAccountName}/runbooks/${runbookName}/draft/content" -ApiVersion 2015-10-31 `
-        -Payload "$scriptContent"
-# Publish runbook
-Publish-AzAutomationRunbook -Name $runbookName -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName
-
 
 # Outputs to allow for nested template
 $DeploymentScriptOutputs = @{}
 $DeploymentScriptOutputs['runbookName'] = $runbookName
 
-# Deletes the user-assigned managed identity associated with this deployment script - cleans up
-$managedIdentityUserAssignedPrincipalId = (Get-AzADServicePrincipal -DisplayName $managedIdentityUserAssignedName).Id
-Get-AzRoleAssignment -ObjectId $managedIdentityUserAssignedPrincipalId | Remove-AzRoleAssignment
-Remove-AzUserAssignedIdentity -ResourceGroupName $resourceGroupName -Name $managedIdentityUserAssignedName
+
+####----------------[SCRIPT]----------------####
+
+## Import PowerShell module dependency to existing automation account
+function New-AzAutomationPS7ModuleDependency {
+    param (
+        [string]$ResourceGroupName, 
+        [string]$AutomationAccountName,
+        [string]$ModuleName,
+        [string]$ModuleVersion
+    )  
+    # Import module
+    Write-Output "Importing module ${ModuleName}"
+    Invoke-AzRestMethod -Method 'PUT' `
+        -ResourceGroupName $ResourceGroupName -ResourceProviderName 'Microsoft.Automation' `
+        -ResourceType 'automationAccounts' -Name "$AutomationAccountName/powershell7Modules/$ModuleName" -ApiVersion 2022-08-08 `
+        -Payload "{`"properties`":{`"contentLink`":{`"uri`":`'https://www.powershellgallery.com/api/v2/package/$ModuleName/$ModuleVersion`'}}}"
+    # Wait until module is imported
+    do {
+        $Result = Invoke-AzRestMethod -Method 'GET' `
+                    -ResourceGroupName $ResourceGroupName -ResourceProviderName 'Microsoft.Automation' `
+                    -ResourceType 'automationAccounts' -Name "$AutomationAccountName/powershell7Modules/$ModuleName" -ApiVersion 2022-08-08 `
+                    -Payload "{`'properties`':{`'contentLink`':{`'uri`':`'https://www.powershellgallery.com/api/v2/package/$ModuleName/$ModuleVersion`'}}}"
+        $ProvisioningState = (($Result.Content | ConvertFrom-Json).Properties).provisioningState
+        Start-Sleep -Seconds 15
+        if ($ProvisioningState -eq 'Failed') {
+            Write-Output "Import of module ${ModuleName} failed"
+            break
+        }
+    } until ($ProvisioningState -eq 'Succeeded')       
+}
+
+## Import remaining PowerShell module to existing automation account
+function New-AzAutomationPS7Module {
+    param (
+        [string]$ResourceGroupName, 
+        [string]$AutomationAccountName,
+        [string]$ModuleName,
+        [string]$ModuleVersion
+    )
+    # Import module
+    Write-Output "Importing module ${ModuleName}"
+    Invoke-AzRestMethod -Method 'PUT' `
+        -ResourceGroupName $ResourceGroupName -ResourceProviderName 'Microsoft.Automation' `
+        -ResourceType 'automationAccounts' -Name "$AutomationAccountName/powershell7Modules/$ModuleName" -ApiVersion 2022-08-08 `
+        -Payload "{`'properties`':{`'contentLink`':{`'uri`':`'https://www.powershellgallery.com/api/v2/package/$ModuleName/$ModuleVersion`'}}}"
+}
+
+## Create PowerShell 7 runbook, upload script content and publish runbook ##
+function New-AzAutomationPS7Runbook {
+    param (
+        [string]$ResourceGroupName, 
+        [string]$AutomationAccountName,
+        [string]$Location,
+        [string]$RunbookScriptUri
+    )
+    # Get content of PS script
+    $ScriptContent = Invoke-RestMethod $RunbookScriptUri
+    # Create PowerShell 7 runbook
+    Write-Output "Creating PowerShell 7 runbook ${RunbookName}"
+    Invoke-AzRestMethod -Method 'PUT' `
+        -ResourceGroupName $ResourceGroupName -ResourceProviderName 'Microsoft.Automation' `
+        -ResourceType 'automationAccounts' -Name "$AutomationAccountName/runbooks/$RunbookName" -ApiVersion 2022-08-08 `
+        -Payload "{`'properties`':{`'runbookType`':`'PowerShell7`', `'logProgress`':false, `'logVerbose`':false, `'draft`':{}}, `'location`':`'${Location}`'}"
+    # Upload PS script to runbook
+    Write-Output "Uploading ${RunbookScriptUri} to ${RunbookName}"
+    Invoke-AzRestMethod -Method 'PUT' `
+        -ResourceGroupName $ResourceGroupName -ResourceProviderName 'Microsoft.Automation' `
+        -ResourceType 'automationAccounts' -Name "$AutomationAccountName/runbooks/$RunbookName/draft/content" -ApiVersion 2022-08-08 `
+        -Payload $ScriptContent
+    # Publish runbook
+    Write-Output "Publishing runbook ${RunbookName}"
+    Publish-AzAutomationRunbook -Name $RunbookName -AutomationAccountName $AutomationAccountName -ResourceGroupName $ResourceGroupName
+}
+
+## Deletes the user-assigned managed identity and role assigment associated with this deployment script - cleans up
+function Remove-DeploymentScriptManagedIdentityResources {
+    param (
+        [string]$ManagedIdentityUserAssignedName
+    )
+    # Remove role assignment
+    Write-Output "Removing role assignment from ${ManagedIdentityUserAssignedName}"
+    $ManagedIdentityUserAssignedPrincipalId = (Get-AzADServicePrincipal -DisplayName $ManagedIdentityUserAssignedName).Id
+    Get-AzRoleAssignment -ObjectId $ManagedIdentityUserAssignedPrincipalId | Remove-AzRoleAssignment
+    # Delete user-assigned managed identity
+    Write-Output "Deleting ${ManagedIdentityUserAssignedName}"
+    Remove-AzUserAssignedIdentity -ResourceGroupName $ResourceGroupName -Name $ManagedIdentityUserAssignedName
+}
+
+
+# Call functions
+New-AzAutomationPS7ModuleDependency -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Authentication' -ModuleVersion '1.28.0'
+New-AzAutomationPS7Module -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Users.Actions' -ModuleVersion '1.28.0'
+New-AzAutomationPS7Runbook -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -Location $location -RunbookScriptUri $runbookScriptUri
+Remove-DeploymentScriptResources -ManagedIdentityUserAssignedName $managedIdentityUserAssignedName

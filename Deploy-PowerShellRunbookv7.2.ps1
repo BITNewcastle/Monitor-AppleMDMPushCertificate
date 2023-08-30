@@ -8,7 +8,7 @@
         Imports remaining PowerShell module to existing automation account.
         Creates draft PowerShell 7.1 runbook.
         Uploads specified PS script content to runbook.
-        Publishes runbook.yb
+        Publishes runbook.
         Deletes the user-assigned managed identity and role assigment associated with this deployment script - cleans up.
 
     .NOTES
@@ -108,7 +108,7 @@ function New-AzAutomationPS7Runbook {
 }
 
 ## Deletes the user-assigned managed identity and role assigment associated with this deployment script - cleans up
-function Remove-DeploymentScriptManagedIdentityResources {
+function Remove-ManagedIdentityResources {
     param (
         [string]$ManagedIdentityUserAssignedName
     )
@@ -126,4 +126,4 @@ function Remove-DeploymentScriptManagedIdentityResources {
 New-AzAutomationPS7ModuleDependency -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Authentication' -ModuleVersion '1.28.0'
 New-AzAutomationPS7Module -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Users.Actions' -ModuleVersion '1.28.0'
 New-AzAutomationPS7Runbook -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -Location $location -RunbookScriptUri $runbookScriptUri
-Remove-DeploymentScriptResources -ManagedIdentityUserAssignedName $managedIdentityUserAssignedName
+Remove-ManagedIdentityResources -ManagedIdentityUserAssignedName $managedIdentityUserAssignedName

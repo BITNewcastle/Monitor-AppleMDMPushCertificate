@@ -3,7 +3,7 @@
         Monitor Apple MDM push certificate in Intune, send email notification when expired or close to expiry.
 
     .DESCRIPTION
-        This script is deployed in the form of an Azure PowerShell 7.2 Runbook under an Automation Account, running on a recurring schedule.
+        This script is deployed in the form of an Azure PowerShell 7.1 Runbook under an Automation Account, running on a recurring schedule.
         The Automation Account requires a system assigned managed identity. The identity requires 'DeviceManagementServiceConfig.Read.All' and 'Mail.Send' permissions to the tenant's Microsoft Graph API.
         It first initialises the connection to Microsoft Graph with the system assigned managed identity.
         The script calls the Microsoft Graph API and retrieves the Apple MDM push certificate resource from Intune. It then validates the certificate expiry date.
@@ -62,7 +62,7 @@ function Set-MailParams {
 try {
     # Connect to MS Graph with system-assigned managed identity
     Write-Output -InputObject 'Connecting to MS Graph with system-assigned managed identity'
-    $msGraphConnection = Connect-MgGraph -Identity
+    $msGraphConnection = Connect-MgGraph -Scopes 'DeviceManagementServiceConfig.Read.All', 'Mail.Send' -Identity
     if ($null -ne $msGraphConnection) {
         Write-Output -InputObject 'Successfully connected to MS Graph'
         try {

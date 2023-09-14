@@ -119,9 +119,8 @@ function Remove-ManagedIdentityResources {
     Remove-AzUserAssignedIdentity -ResourceGroupName $ResourceGroupName -Name $ManagedIdentityUserAssignedName
 }
 
-
 # Call functions
-New-AzAutomationPS7ModuleDependency -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Authentication' -ModuleVersion '1.28.0'
-New-AzAutomationPS7Module -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Users.Actions' -ModuleVersion '1.28.0'
+New-AzAutomationPS7ModuleDependency -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Authentication' -ModuleVersion '2.5.0'
+New-AzAutomationPS7Module -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -ModuleName 'Microsoft.Graph.Users.Actions' -ModuleVersion '2.5.0'
 New-AzAutomationPS7Runbook -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAccountName -Location $location -RunbookScriptUri $runbookScriptUri
 Remove-ManagedIdentityResources -ManagedIdentityUserAssignedName $managedIdentityUserAssignedName
